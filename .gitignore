@@ -1,3 +1,14 @@
+# Files that must not be commited
+# - Local html files
+*.html
+*.htm
+
+# Epub files should not be commited
+*.epub
+
+#folders to ignore
+backup/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
