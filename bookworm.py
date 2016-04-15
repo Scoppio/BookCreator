@@ -1,27 +1,60 @@
+# BookCreator Script "BookWorm"
+#
+# Created by Lucas Scoppio
+# Twitter @developercoppio
+# 
+# Do what you want cuz a pirate is free! YARRR!!!
+# But don't forget to be nice, the world is lacking nice people
+#
+
 from bs4 import BeautifulSoup
 from ebooklib import epub
 import urllib2
 import os
 
-#http://eloquentjavascript.net/index.html next try
-#http://chimera.labs.oreilly.com/books/1234000000754/index.html
-#http://chimera.labs.oreilly.com/books/1230000000393/index.html
 
-def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.html"):
+def getORilley (url="http://chimera.labs.oreilly.com/books/1234000000754/index.html"):
     """
-    url must be of the index of an oreilly internet ebook
-    """
-    eBook = epub.EpubBook()
+    url must be of the index of an O'Rilley internet ebook
     
+    Books for you to try
+        http://chimera.labs.oreilly.com/books/1234000000754/index.html
+        http://chimera.labs.oreilly.com/books/1230000000393/index.html
+
+    """
+    eBook = epub.EpubBook()   
     resp = get_page(url)
-    soup = BeautifulSoup(resp, from_encoding="UTF-8")
-    
+    soup = BeautifulSoup(resp, from_encoding="UTF-8")    
     url2 = url[:url.index("index")]
-
     chapters = ['']
     authors = []
     links = []
     book = {}
+
+    # define css style
+    style = '''
+                @namespace epub "http://www.idpf.org/2007/ops";
+                body {
+                    font-family: Cambria, Liberation Serif, Bitstream Vera Serif, Georgia, Times, Times New Roman, serif;
+                }
+                h2 {
+                     text-align: left;
+                     text-transform: uppercase;
+                     font-weight: 200;     
+                }
+                ol {
+                        list-style-type: none;
+                }
+                ol > li:first-child {
+                        margin-top: 0.3em;
+                }
+                nav[epub|type~='toc'] > ol > li > ol  {
+                    list-style-type:square;
+                }
+                nav[epub|type~='toc'] > ol > li > ol > li {
+                        margin-top: 0.3em;
+                }
+            '''
 
     book["Title"] = soup.find('h1', class_="title").getText()
 
@@ -51,6 +84,7 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
     for author in book["Authors"]:
         eBook.add_author(author)
 
+    #separation for local files
     f_ = os.listdir("E:\wtf\scripts\wtf\crawler\BookCreator")
         
     for link in links:
@@ -66,45 +100,19 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
 
         try:
             c = epub.EpubHtml(title=soup.find('h1', class_="title").getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, url2, link)
             chapters.append(c)
             eBook.add_item(c)
         except AttributeError:
             c = epub.EpubHtml(title=soup.find('h2', class_="title").getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, url2, link)
             chapters.append(c)
             eBook.add_item(c)
 
     eBook.toc = chapters
 
     eBook.add_item(epub.EpubNcx())
-    eBook.add_item(epub.EpubNav())
-
-
-    # define css style
-    style = '''
-@namespace epub "http://www.idpf.org/2007/ops";
-body {
-    font-family: Cambria, Liberation Serif, Bitstream Vera Serif, Georgia, Times, Times New Roman, serif;
-}
-h2 {
-     text-align: left;
-     text-transform: uppercase;
-     font-weight: 200;     
-}
-ol {
-        list-style-type: none;
-}
-ol > li:first-child {
-        margin-top: 0.3em;
-}
-nav[epub|type~='toc'] > ol > li > ol  {
-    list-style-type:square;
-}
-nav[epub|type~='toc'] > ol > li > ol > li {
-        margin-top: 0.3em;
-}
-'''
+    eBook.add_item(epub.EpubNav())    
 
     # add css file
     nav_css = epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=style)
@@ -135,7 +143,7 @@ def get_page(url):
 
     return src
 
-def createChapter(url, chapter):
+def createChapter(url, url2, chapter):
 
     response = urllib2.urlopen(url)
     webContent = str(response.read())
@@ -143,7 +151,7 @@ def createChapter(url, chapter):
     a = webContent.index("section")-1
     b = webContent.index("</section>")+10
     chunk = webContent[a : b]    
-    chunk = chunk.replace("http://chimera.labs.oreilly.com/books/1230000000393/", "")
+    chunk = chunk.replace(url2, "")
     with open(chapter, "w") as text_file:
         text_file.write(chunk)
 
@@ -152,4 +160,4 @@ def createChapter(url, chapter):
 
 if __name__ == '__main__':
     #argparse
-    getOrreily()
+    getORilley()
