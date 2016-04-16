@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 import urllib2
 import os
+from slugify import slugify
 
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 DOWNLOADS_PATH = os.path.join(BASE_PATH, 'downloads')
@@ -13,6 +14,15 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     """
     getORilley modified for Eloquent JavaScript
     """
+
+    # Drop "http[s]://" and "index.html", if present:
+    simplified_url = url.split('://')[-1].split('index.html')[0]
+    book_slug = slugify(simplified_url)
+    book_download_path = os.path.join(DOWNLOADS_PATH, book_slug)
+    if not os.path.isdir(book_download_path):
+        print 'CREATING book_download_path ({})'.format(book_download_path)
+        os.mkdir(book_download_path)
+
     resp = None
 
     eBook = epub.EpubBook()
@@ -30,7 +40,7 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     book["Authors"] = "Marijn Haverbeke"
     book["TOC"] = str(soup.find('ol', class_="toc"))
     
-    with open(os.path.join(DOWNLOADS_PATH, "TOC.html"), "w") as text_file:
+    with open(os.path.join(book_download_path, "TOC.html"), "w") as text_file:
                 text_file.write("<!-- " + book["Title"] + " -->\n")
                 text_file.write(book["TOC"])
 
@@ -43,12 +53,12 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     eBook.set_language("en")
     eBook.add_author(book["Authors"])
     
-    f_ = os.listdir(DOWNLOADS_PATH)
+    f_ = os.listdir(book_download_path)
 
     for link in links:        
         if link in f_:
             print "local file:", link
-            with open(os.path.join(DOWNLOADS_PATH, link), "r") as text_file:                  
+            with open(os.path.join(book_download_path, link), "r") as text_file:                  
                 resp = text_file.read()
         else:
             print "downloading file:", link
@@ -57,13 +67,13 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
         soup = BeautifulSoup(resp, "lxml")        
         try:
             c = epub.EpubHtml(title=soup.find('h1').getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
             
         except AttributeError:
             c = epub.EpubHtml(title=soup.find('h2').getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
 
@@ -127,7 +137,7 @@ def get_page(url):
 
     return src
 
-def createChapter(url, chapter):
+def createChapter(url, chapter, book_download_path):
 
     response = urllib2.urlopen(url)
     webContent = str(response.read())
@@ -136,7 +146,7 @@ def createChapter(url, chapter):
     b = webContent.index("</article>")+10
     chunk = webContent[a : b]    
     chunk = chunk.replace("http://eloquentjavascript.net/", "")
-    with open(os.path.join(DOWNLOADS_PATH, chapter), "w") as text_file:
+    with open(os.path.join(book_download_path, chapter), "w") as text_file:
         text_file.write(chunk)
 
     return chunk

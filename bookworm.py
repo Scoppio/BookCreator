@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 import urllib2
 import os
+from slugify import slugify
 
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 DOWNLOADS_PATH = os.path.join(BASE_PATH, 'downloads')
@@ -17,6 +18,15 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
     """
     url must be of the index of an oreilly internet ebook
     """
+
+    # Drop "http[s]://" and "index.html", if present:
+    simplified_url = url.split('://')[-1].split('index.html')[0]
+    book_slug = slugify(simplified_url)
+    book_download_path = os.path.join(DOWNLOADS_PATH, book_slug)
+    if not os.path.isdir(book_download_path):
+        print 'CREATING book_download_path ({})'.format(book_download_path)
+        os.mkdir(book_download_path)
+
     eBook = epub.EpubBook()
     
     resp = get_page(url)
@@ -37,7 +47,7 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
     book["Authors"] = authors
     book["TOC"] = str(soup.find('div', class_="toc"))
     
-    with open(os.path.join(DOWNLOADS_PATH, "TOC.html"), "w") as text_file:
+    with open(os.path.join(book_download_path, "TOC.html"), "w") as text_file:
                 text_file.write("<!-- " + book["Title"] + " -->\n")
                 text_file.write(book["TOC"])
 
@@ -57,12 +67,12 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
     for author in book["Authors"]:
         eBook.add_author(author)
 
-    f_ = os.listdir(DOWNLOADS_PATH)
+    f_ = os.listdir(book_download_path)
         
     for link in links:
         if link in f_:
             print "local file:", link
-            with open(os.path.join(DOWNLOADS_PATH, link), "r") as text_file:                  
+            with open(os.path.join(book_download_path, link), "r") as text_file:                  
                 resp = text_file.read()    
         else:
             print "downloading file:", link
@@ -72,12 +82,12 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
 
         try:
             c = epub.EpubHtml(title=soup.find('h1', class_="title").getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
         except AttributeError:
             c = epub.EpubHtml(title=soup.find('h2', class_="title").getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link)
+            c.content = createChapter(url2+link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
 
@@ -140,7 +150,7 @@ def get_page(url):
 
     return src
 
-def createChapter(url, chapter):
+def createChapter(url, chapter, book_download_path):
 
     response = urllib2.urlopen(url)
     webContent = str(response.read())
@@ -149,7 +159,7 @@ def createChapter(url, chapter):
     b = webContent.index("</section>")+10
     chunk = webContent[a : b]    
     chunk = chunk.replace("http://chimera.labs.oreilly.com/books/1230000000393/", "")
-    with open(os.path.join(DOWNLOADS_PATH, chapter), "w") as text_file:
+    with open(os.path.join(book_download_path, chapter), "w") as text_file:
         text_file.write(chunk)
 
     return chunk
