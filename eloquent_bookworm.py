@@ -3,6 +3,11 @@ from ebooklib import epub
 import urllib2
 import os
 
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+DOWNLOADS_PATH = os.path.join(BASE_PATH, 'downloads')
+if not os.path.isdir(DOWNLOADS_PATH):
+    print 'CREATING DOWNLOADS_PATH ({})'.format(DOWNLOADS_PATH)
+    os.mkdir(DOWNLOADS_PATH)
 
 def getEloquent (url="http://eloquentjavascript.net/index.html"):
     """
@@ -25,7 +30,7 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     book["Authors"] = "Marijn Haverbeke"
     book["TOC"] = str(soup.find('ol', class_="toc"))
     
-    with open("TOC.html", "w") as text_file:
+    with open(os.path.join(DOWNLOADS_PATH, "TOC.html"), "w") as text_file:
                 text_file.write("<!-- " + book["Title"] + " -->\n")
                 text_file.write(book["TOC"])
 
@@ -38,12 +43,12 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     eBook.set_language("en")
     eBook.add_author(book["Authors"])
     
-    f_ = os.listdir("E:\wtf\scripts\wtf\crawler\BookCreator")
+    f_ = os.listdir(DOWNLOADS_PATH)
 
     for link in links:        
         if link in f_:
             print "local file:", link
-            with open(link, "r") as text_file:                  
+            with open(os.path.join(DOWNLOADS_PATH, link), "r") as text_file:                  
                 resp = text_file.read()
         else:
             print "downloading file:", link
@@ -131,7 +136,7 @@ def createChapter(url, chapter):
     b = webContent.index("</article>")+10
     chunk = webContent[a : b]    
     chunk = chunk.replace("http://eloquentjavascript.net/", "")
-    with open(chapter, "w") as text_file:
+    with open(os.path.join(DOWNLOADS_PATH, chapter), "w") as text_file:
         text_file.write(chunk)
 
     return chunk
