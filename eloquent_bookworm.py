@@ -10,11 +10,11 @@ if not os.path.isdir(DOWNLOADS_PATH):
     print 'CREATING DOWNLOADS_PATH ({})'.format(DOWNLOADS_PATH)
     os.mkdir(DOWNLOADS_PATH)
 
-def getEloquent (url="http://eloquentjavascript.net/index.html"):
+
+def getEloquent(url="http://eloquentjavascript.net/index.html"):
     """
     getORilley modified for Eloquent JavaScript
     """
-
     # Drop "http[s]://" and "index.html", if present:
     simplified_url = url.split('://')[-1].split('index.html')[0]
     book_slug = slugify(simplified_url)
@@ -26,9 +26,9 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     resp = None
 
     eBook = epub.EpubBook()
-    
+
     soup = BeautifulSoup(get_page(url), "lxml")
-    
+
     url2 = url[:url.index("index")]
 
     chapters = []
@@ -39,7 +39,7 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     book["Title"] = soup.find('h1').getText()
     book["Authors"] = "Marijn Haverbeke"
     book["TOC"] = str(soup.find('ol', class_="toc"))
-    
+
     with open(os.path.join(book_download_path, "TOC.html"), "w") as text_file:
                 text_file.write("<!-- " + book["Title"] + " -->\n")
                 text_file.write(book["TOC"])
@@ -47,33 +47,32 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
     for link in soup.find('ol', class_="toc").find_all('a', href=True):
         links.append(link['href'])
 
-
     eBook.set_identifier(book["Title"])
     eBook.set_title(book["Title"])
     eBook.set_language("en")
     eBook.add_author(book["Authors"])
-    
+
     f_ = os.listdir(book_download_path)
 
-    for link in links:        
+    for link in links:
         if link in f_:
             print "local file:", link
-            with open(os.path.join(book_download_path, link), "r") as text_file:                  
+            with open(os.path.join(book_download_path, link), "r") as text_file:
                 resp = text_file.read()
         else:
             print "downloading file:", link
-            resp = get_page(url2+link)
-        
-        soup = BeautifulSoup(resp, "lxml")        
+            resp = get_page(url2 + link)
+
+        soup = BeautifulSoup(resp, "lxml")
         try:
             c = epub.EpubHtml(title=soup.find('h1').getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link, book_download_path)
+            c.content = createChapter(url2 + link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
-            
+
         except AttributeError:
             c = epub.EpubHtml(title=soup.find('h2').getText(), file_name=link, lang='en')
-            c.content = createChapter(url2+link, link, book_download_path)
+            c.content = createChapter(url2 + link, link, book_download_path)
             chapters.append(c)
             eBook.add_item(c)
 
@@ -81,7 +80,6 @@ def getEloquent (url="http://eloquentjavascript.net/index.html"):
 
     eBook.add_item(epub.EpubNcx())
     eBook.add_item(epub.EpubNav())
-
 
     # define css style
     style = '''
@@ -92,7 +90,7 @@ body {
 h2 {
      text-align: left;
      text-transform: uppercase;
-     font-weight: 200;     
+     font-weight: 200;
 }
 ol {
         list-style-type: none;
@@ -116,12 +114,13 @@ nav[epub|type~='toc'] > ol > li > ol > li {
     eBook.spine = chapters
 
     # create epub file
-    epub.write_epub('Eloquent JavaScript.epub', eBook, {})    
+    epub.write_epub('Eloquent JavaScript.epub', eBook, {})
+
 
 def get_page(url):
     """ loads a webpage into a string """
     src = ''
-    
+
     req = urllib2.Request(url)
 
     try:
@@ -132,19 +131,20 @@ def get_page(url):
             src += chunk
         response.close()
     except IOError:
-        print 'can\'t open',url 
+        print 'can\'t open', url
         return src
 
     return src
+
 
 def createChapter(url, chapter, book_download_path):
 
     response = urllib2.urlopen(url)
     webContent = str(response.read())
 
-    a = webContent.index("article")-1
-    b = webContent.index("</article>")+10
-    chunk = webContent[a : b]    
+    a = webContent.index("article") - 1
+    b = webContent.index("</article>") + 10
+    chunk = webContent[a:b]
     chunk = chunk.replace("http://eloquentjavascript.net/", "")
     with open(os.path.join(book_download_path, chapter), "w") as text_file:
         text_file.write(chunk)
@@ -153,5 +153,5 @@ def createChapter(url, chapter, book_download_path):
 
 
 if __name__ == '__main__':
-    #argparse
+    # argparse
     getEloquent()
