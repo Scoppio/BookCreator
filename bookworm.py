@@ -20,7 +20,7 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
     eBook = epub.EpubBook()
     
     resp = get_page(url)
-    soup = BeautifulSoup(resp, from_encoding="UTF-8")
+    soup = BeautifulSoup(resp, "lxml", from_encoding="UTF-8")
     
     url2 = url[:url.index("index")]
 
@@ -68,7 +68,7 @@ def getOrreily (url="http://chimera.labs.oreilly.com/books/1234000000754/index.h
             print "downloading file:", link
             resp = get_page(url2+link)
                         
-        soup = BeautifulSoup(resp, from_encoding="UTF-8")
+        soup = BeautifulSoup(resp, "lxml", from_encoding="UTF-8")
 
         try:
             c = epub.EpubHtml(title=soup.find('h1', class_="title").getText(), file_name=link, lang='en')
