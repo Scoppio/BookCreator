@@ -154,8 +154,8 @@ def getDataForEbook(url):
     if VERBOSE:
         print "Starting book creation..."
     # create epub file
-    epub.write_epub(os.path.join( DOWNLOADS_PATH,book["Title"] + '.epub'), eBook, {})
-    print "Done,", os.path.join( DOWNLOADS_PATH,book["Title"] + '.epub'), "created!"
+    epub.write_epub(book["Title"] + '.epub', eBook, {})
+    print "Done,", book["Title"] + '.epub', "created!"
     print "Time elapsed", time.time() - time_elapsed
 
 def get_page(url):
