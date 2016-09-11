@@ -9,26 +9,47 @@
 
 from bs4 import BeautifulSoup
 from ebooklib import epub
-from slugify import slugify
-import urllib2
+from requests import get
 import time
 import argparse
 import os
 
+""" Slugfy imports """
+import re
+import unicodedata
+
+
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 DOWNLOADS_PATH = os.path.join(BASE_PATH, 'downloads')
 if not os.path.isdir(DOWNLOADS_PATH):
-    print 'CREATING DOWNLOADS_PATH ({})'.format(DOWNLOADS_PATH)
+    print( 'CREATING DOWNLOADS_PATH ({})'.format(DOWNLOADS_PATH))
     os.mkdir(DOWNLOADS_PATH)
 
 STYLE_PATH = os.path.join(BASE_PATH, 'style')    
 if not os.path.isdir(STYLE_PATH):
-    print 'CREATING STYLE_PATH ({})'.format(STYLE_PATH)
+    print( 'CREATING STYLE_PATH ({})'.format(STYLE_PATH))
     os.mkdir(STYLE_PATH)
 
 VERBOSE = False
 LANGUAGE = "en"
-STYLE = "style.css"
+_style_ = "style.css"
+
+
+def slugify(string):
+    """A generic slugifier utility (currently only for Latin-based scripts).
+
+    Slugify a unicode string.
+
+    Example:
+
+        >>> slugify(u"Héllø Wörld")
+        u"hello-world"
+
+    """
+
+    return re.sub(r'[-\s]+', '-',
+            (re.sub(r'[^\w\s-]', '',string).strip().lower()))
+
 
 def getDataForEbook(url):
     """
@@ -72,15 +93,15 @@ def getDataForEbook(url):
     # first it will drop "http[s]://" and "index.html", if present:
     simplified_url = url.split('://')[-1].split('index.html')[0]
     if VERBOSE:
-        print 'simplified url:', simplified_url
+        print( 'simplified url:', simplified_url)
     #then we will create the book folder... turns out it has to be unicode, so we fix that here
-    book_slug = slugify(unicode(simplified_url, "utf-8"))
+    book_slug = slugify(simplified_url)#slugify(unicode(simplified_url, "utf-8"))
     book_download_path = os.path.join(DOWNLOADS_PATH, book_slug)
     #in case the book folder is not present, it will create one.
     if not os.path.isdir(book_download_path):
         os.mkdir(book_download_path)
         if VERBOSE:
-            print 'CREATING book_download_path ({})'.format(book_download_path)
+            print( 'CREATING book_download_path ({})'.format(book_download_path))
 
     #Creating eBook creator
     eBook = epub.EpubBook()
@@ -91,7 +112,9 @@ def getDataForEbook(url):
     #url_root is the root of the book, where you find the table of contents (the link for all the chapters)
     url_root = url[:url.index("index")]
     #now we need to find the title of the book, usually it is an h1 with class "title"
+    
     book["Title"] = soup.find('h1', class_="title").getText()
+
     #capture the authors of the book and put all to the authors ina variable to put into the metadata
     for author in soup.find_all("h3", class_="author"):
         authors.append(author.getText())
@@ -129,11 +152,11 @@ def getDataForEbook(url):
     #and then run the links looking for each one inside the local path looking for files missing.
     for link in links:
         if link in f_:
-            print "Local file found:", link
+            print( "Local file found:", link)
             with open(os.path.join(book_download_path, link), "r") as text_file:
                 resp = text_file.read()
         else:
-            print "Downloading file:", link
+            print( "Downloading file:", link)
             resp = get_page(url_root + link)
 
         soup = BeautifulSoup(resp, "lxml", from_encoding="UTF-8")
@@ -156,11 +179,11 @@ def getDataForEbook(url):
 
     # define css style
     style = ""
-    with open(os.path.join(STYLE_PATH, STYLE), "r") as text_file:
+    with open(os.path.join(STYLE_PATH, _style_), "r") as text_file:
                 style = text_file.read()
 
     if VERBOSE:
-        print "Applying style", STYLE
+        print( "Applying style", _style_)
     # add css file
     nav_css = epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=style)
     eBook.add_item(nav_css)
@@ -169,44 +192,31 @@ def getDataForEbook(url):
     eBook.spine = chapters
     time_elapsed = time.time()
     if VERBOSE:
-        print "Starting book creation..."
+        print( "Starting book creation...")
     # create epub file
     epub.write_epub(os.path.join( DOWNLOADS_PATH, book["Title"] + '.epub'), eBook, {})
-    print "Done,", os.path.join( DOWNLOADS_PATH, book["Title"] + '.epub'), "created!"
-    print "Time elapsed", time.time() - time_elapsed
+    print( "Done,", os.path.join( DOWNLOADS_PATH, book["Title"] + '.epub'), "created!")
+    print( "Time elapsed", time.time() - time_elapsed)
 
 def get_page(url):
     """ loads a webpage into a string, reading it in chunks """
     src = ''
-    req = urllib2.Request(url)
+    #req = urllib2.Request(url)
     if VERBOSE:
-        print "GET PAGE:", url
+        print( "GET PAGE:", url)
     #we have to try it, there is no other way to do it properly, because we may have timeouts
     try:
-        response = urllib2.urlopen(req)
-        chunk = True
-        #chunk becomes true and than becomes "1024" characters with response.read
-        while chunk:
-            chunk = response.read(1024)
-            #after that it will read and "delete" response until it runs out and become False
-            #and keeps putting the data into src
-            src += chunk
-        #use Close to stop the connection to the web
-        response.close()
+        result = get(url)
+        src = result.content
     except IOError:
         #in case of url error we throw the error message
-        print 'can\'t open', url
-    except urllib2.HTTPError, e:
-        checksLogger.error('HTTPError = ' + str(e.code))
-    except urllib2.URLError, e:
-        checksLogger.error('URLError = ' + str(e.reason))
-    except httplib.HTTPException, e:
-        checksLogger.error('HTTPException')
-    except Exception:
+        print( 'can\'t open', url)
+    except Exception as e:
         import traceback
-        checksLogger.error('generic exception: ' + traceback.format_exc())    
+        print('generic exception:', e)
 
     #return the content in src
+
     return src
 
 
@@ -229,7 +239,7 @@ def createChapter(url, chapter, book_download_path, response):
     chunk = chunk.replace(url, "")
     #</xgh>
     if VERBOSE:
-        print "Writing", chapter, "to memory"
+        print( "Writing", chapter, "to memory")
     #After all of that, the juicy stuff is written to a file that can later be modified
     with open(os.path.join(book_download_path, chapter), "w") as text_file:
         text_file.write(chunk)
@@ -241,9 +251,10 @@ if __name__ == '__main__':
     # http://eloquentjavascript.net/index.html next try
     # http://chimera.labs.oreilly.com/books/1234000000754/index.html
     # http://chimera.labs.oreilly.com/books/1230000000393/index.html
+    # http://chimera.labs.oreilly.com/books/1230000000393/index.html
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", help="url of the webpage to be converted into ebook",
-                    default="http://chimera.labs.oreilly.com/books/1230000000393/index.html")
+                    default="http://chimera.labs.oreilly.com/books/1234000000754/index.html")
     parser.add_argument("-l", "--language", help="select ebook language, defaulte is 'en'",
                     default="en")
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
@@ -252,17 +263,18 @@ if __name__ == '__main__':
                     default="section")
     parser.add_argument("-css", "--style", help="css file inside style folder to change the ebook formating style",
                     default="style.css")
-    args = parser.parse_args()    
-    
-    STYLE = args.style
-    TAG = args.tag
-    LANGUAGE = args.language
-    VERBOSE = args.verbose
-    if VERBOSE:
-        print "verbosity turned on"
-        print "Style loaded:", STYLE
-        print "Language loaded:", LANGUAGE
-        print "Tag for section is", TAG
+    args = parser.parse_args()
 
-    print "Running", os.path.basename(__file__)
-    getDataForEbook(args.url)
+    _style_ = "style.css" #args['style']
+    TAG = "section"       # args['tag']
+    LANGUAGE = "en"       # args['language']
+    VERBOSE = True        # args['verbose']
+
+    if VERBOSE:
+        print( "verbosity turned on")
+        print( "Style loaded:", _style_)
+        print( "Language loaded:", LANGUAGE)
+        print( "Tag for section is", TAG)
+
+    print( "Running", os.path.basename(__file__))
+    getDataForEbook("http://chimera.labs.oreilly.com/books/1234000000754/index.html") # args['url']
