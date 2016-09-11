@@ -2,7 +2,7 @@
 #
 # Created by Lucas Scoppio
 # Twitter @developercoppio
-# 
+#  
 # Do what you want cuz a pirate is free! YARRR!!!
 # But don't forget to be nice, the world is lacking nice people
 #
